@@ -11,7 +11,7 @@ A C code generator using an LLVM-like API
 ### examples/main.rs
 
 ```rust
-use immediacy::*;
+use intermediate_c::*;
 use std::fs::File;
 use std::io::BufWriter;
 use std::io::Write;

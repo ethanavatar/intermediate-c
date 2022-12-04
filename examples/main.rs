@@ -1,4 +1,4 @@
-use immediacy::*;
+use intermediate_c::*;
 use std::fs::File;
 use std::io::BufWriter;
 use std::io::Write;
