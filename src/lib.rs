@@ -1,6 +1,5 @@
 use std::fmt::Display;
 
-
 #[derive(Debug, Clone)]
 pub enum CType {
     Int(u8),
@@ -57,6 +56,7 @@ impl Display for CType {
 pub struct Module {
     name: String,
     functions: Vec<Function>,
+    includes: Vec<String>,
 }
 
 impl Module {
@@ -64,20 +64,31 @@ impl Module {
         Module {
             name: name.to_string(),
             functions: vec![],
+            includes: vec![],
         }
     }
 
     pub fn name(&self) -> &str { &self.name }
 
-    pub fn add_function(&mut self, name: &str, ret_type: &CType, args: Vec<CType>, is_variadic: bool) -> &mut Function {
+    pub fn include(&mut self, include: &str) {
+        self.includes.push(include.to_string());
+    }
+
+    pub fn add_function(&mut self, name: &str, ret_type: &CType, args: Option<Vec<CType>>, is_variadic: bool) -> &mut Function {
         let mut func = Function::new(name, ret_type, args, is_variadic);
         self.functions.push(func);
         self.functions.last_mut().unwrap()
     }
 
     pub fn emit_c(&self) -> String {
-        
         let mut output = String::new();
+
+        for include in &self.includes {
+            output.push_str(&format!("#include <{}>\n", include));
+        }
+
+        output.push_str("\n");
+        
         for func in &self.functions {
             output.push_str(&func.emit_c());
         }
@@ -90,14 +101,14 @@ impl Module {
 pub struct Function {
     name: String,
     ret_type: CType,
-    args: Vec<CType>,
+    args: Option<Vec<CType>>,
     is_variadic: bool,
 
     block: Option<Block>,
 }
 
 impl Function {
-    pub fn new(name: &str, ret_type: &CType, args: Vec<CType>, is_variadic: bool) -> Function {
+    pub fn new(name: &str, ret_type: &CType, args: Option<Vec<CType>>, is_variadic: bool) -> Function {
         Function {
             name: name.to_string(),
             ret_type: ret_type.clone(),
@@ -110,7 +121,7 @@ impl Function {
 
     pub fn name(&self) -> &str { &self.name }
     pub fn ret_type(&self) -> &CType { &self.ret_type }
-    pub fn args(&self) -> &Vec<CType> { &self.args }
+    pub fn args(&self) -> &Option<Vec<CType>> { &self.args }
     pub fn is_variadic(&self) -> bool { self.is_variadic }
 
     pub fn add_block(&mut self) -> &mut Block {
@@ -123,7 +134,13 @@ impl Function {
 
     fn emit_c(&self) -> String {
         let mut output = String::new();
-        output.push_str(&format!("{} {}({})", self.ret_type, self.name, self.args.iter().map(|t| t.to_string()).collect::<Vec<String>>().join(", ")));
+        let decl = if let Some(a) = &self.args {
+            format!("{} {}({})", self.ret_type, self.name, a.iter().map(|t| t.to_string()).collect::<Vec<String>>().join(", "))
+        } else {
+            format!("{} {}(void)", self.ret_type, self.name)
+        };
+
+        output.push_str(&decl);
         
         if let Some(block) = &self.block {
             output.push_str(" ");
@@ -164,7 +181,6 @@ impl Block {
 #[derive(Debug, Clone)]
 pub struct CallValue {
     value: CType,
-    name: String,
 }
 
 #[derive(Debug)]
@@ -189,13 +205,16 @@ impl<'a> Builder<'a> {
         }
     }
 
-    pub fn build_call(&mut self, function: &Function, args: Vec<CValue>, name: &str) -> CallValue {
-        let line = format!("{} {} = {}({});", function.ret_type(), name, function.name(), args.iter().map(|a| a.to_string()).collect::<Vec<String>>().join(", "));
+    pub fn build_call(&mut self, function: &Function, args: Vec<CValue>, name: Option<&str>) -> CallValue {
+        let line = if let Some(name_str) = name {
+            format!("{} {} = {}({});", function.ret_type(), name_str, function.name(), args.iter().map(|a| a.to_string()).collect::<Vec<String>>().join(", "))
+        } else {
+            format!("{}({});", function.name(), args.iter().map(|a| a.to_string()).collect::<Vec<String>>().join(", "))
+        };
         self.add_line(&line);
 
         CallValue {
             value: function.ret_type().clone(),
-            name: name.to_string(),
         }
     }
 

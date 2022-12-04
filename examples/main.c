@@ -1,4 +1,6 @@
-int main() {
-    int call = printf("Hello, Sailor!\n");
+#include <stdio.h>
+
+int main(void) {
+    printf("Hello, Sailor!\n");
     return 0;
 }

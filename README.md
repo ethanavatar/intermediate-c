@@ -1,3 +1,16 @@
+# intermediate-c
+
+A C code generator using an LLVM-like API
+
+**NOTICE: At this point, this is a proof of concept. Please don't treat it like viable software.**
+
+## Example
+
+- - -
+
+### examples/main.rs
+
+```rust
 use immediacy::*;
 use std::fs::File;
 use std::io::BufWriter;
@@ -17,7 +30,7 @@ fn main() {
         None, // arguments
         false // is_variadic
     );
-
+    
     // define a block for the `main` function
     let main_block = main_func.add_block();
 
@@ -49,3 +62,26 @@ fn main() {
     let src = module.emit_c();
     writer.write_all(src.as_bytes()).unwrap();
 }
+```
+
+The code above can be run using:
+
+```bash
+cargo run --release --example main
+```
+
+and will result in the following C code:
+
+
+- - -
+
+### examples/main.c
+
+```c
+#include <stdio.h>
+
+int main(void) {
+    printf("Hello, Sailor!\n");
+    return 0;
+}
+```
