@@ -1,14 +1,21 @@
-use intermediate_c::*;
+use intermediate_c::{
+    builder::Builder,
+    function::Function,
+    module::Module,
+    ctype::CType,
+    cvalue::CValue
+};
 use std::fs::File;
 use std::io::BufWriter;
-use std::io::Write;
 
 fn main() {
     let i32_t = CType::Int(32);
+    let charptr_t = CType::Ptr(Box::new(CType::Char));
     let mut module = Module::new("main");
 
-    // Included for `printf`
-    module.include("stdio.h");
+    // included for `printf`.
+    // `local = false` means it's an include from the standard library
+    module.include("stdio.h", false);
 
     // declare the `main` function
     let main_func = module.add_function(
@@ -24,11 +31,11 @@ fn main() {
     let mut builder = Builder::new();
     builder.position_at_end(main_block);
 
-    // The type signature of the `printf` function
+    // the type signature of the `printf` function
     let printf_func = Function::new(
         "printf", // name
-        &CType::Int(32), // return type
-        Some(vec![CType::Ptr(Box::new(CType::Int(8)))]), // arguments
+        &i32_t, // return type
+        Some(vec![charptr_t]), // arguments
         true // is_variadic
     );
 
@@ -42,10 +49,10 @@ fn main() {
     // return from `main`
     builder.build_return(&i32_t.into_value(0));
 
-    // Write the module to a file
+    // write the module to a file
     let file = File::create("./examples/main.c").unwrap();
     let mut writer = BufWriter::new(file);
 
-    let src = module.emit_c();
-    writer.write_all(src.as_bytes()).unwrap();
+    module.emit_c(&mut writer).unwrap();
+
 }
