@@ -30,14 +30,13 @@ impl Module {
         self.global_includes.push(include.to_string());
     }
 
-    pub fn add_function(&mut self, name: &str, ret_type: &CType, args: Option<Vec<CType>>, is_variadic: bool) -> &mut Function {
-        let func = Function::new(name, ret_type, args, is_variadic);
+    pub fn add_function(&mut self, name: &str, ret_type: &CType, args: Option<Vec<CType>>, is_variadic: bool, is_static: bool) -> &mut Function {
+        let func = Function::new(name, ret_type, args, is_variadic, is_static);
         self.functions.push(func);
         self.functions.last_mut().unwrap()
     }
 
-    pub fn emit_c(&self, out: &mut impl std::io::Write) -> std::io::Result<()> {
-
+    fn emit_includes(&self, out: &mut impl std::io::Write) -> std::io::Result<()> {
         for include in &self.global_includes {
             write!(out, "#include <{}>\n", include)?;
         }
@@ -46,12 +45,34 @@ impl Module {
             write!(out, "#include \"{}\"\n", include)?;
         }
 
+        Ok(())
+    }
+
+    pub fn emit_h(&self, out: &mut impl std::io::Write) -> std::io::Result<()> {
+        let name = format!("{}_H", self.name.to_uppercase());
+        write!(out, "#ifndef {}\n", name)?;
+        write!(out, "#define {}\n", name)?;
         write!(out, "\n")?;
 
+        self.emit_includes(out)?;
+        write!(out, "\n")?;
+        for func in &self.functions {
+            if func.is_static() || func.name() == "main" {
+                continue;
+            }
+            func.emit_h(out)?;
+        }
+        write!(out, "\n")?;
+        write!(out, "#endif // {}\n", name)?;
+        Ok(())
+    }
+
+    pub fn emit_c(&self, out: &mut impl std::io::Write) -> std::io::Result<()> {
+        self.emit_includes(out)?;
+        write!(out, "\n")?;
         for func in &self.functions {
             func.emit_c(out)?;
         }
-
         Ok(())
     }
 }
